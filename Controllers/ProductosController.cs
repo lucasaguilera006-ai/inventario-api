@@ -3,9 +3,11 @@ using Microsoft.EntityFrameworkCore;
 using InventarioAPI.Data;
 using InventarioAPI.Models;
 using InventarioAPI.DTOs;
+using Microsoft.AspNetCore.Authorization;
 
 namespace InventarioAPI.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class ProductosController : ControllerBase
