@@ -1,49 +1,66 @@
 # InventarioAPI
 
-API REST de gestión de inventario desarrollada con ASP.NET Core (.NET 9), Entity Framework y SQL Server.
+REST API para gestión de inventario desarrollada con ASP.NET Core (.NET 9), Entity Framework Core y autenticación JWT.
 
 ## Tecnologías
 
-- ASP.NET Core 9
+- ASP.NET Core .NET 9
 - Entity Framework Core
 - SQL Server
-- JWT Authentication
+- JWT Bearer Authentication
 - Swagger / OpenAPI
-
-## Funcionalidades
-
-- CRUD completo de productos
-- Gestión de stock y categorías
-- Autenticación con JWT (en desarrollo)
-- Documentación interactiva con Swagger
-
-## Estructura del proyecto
-InventarioAPI/
-
-├── Controllers/    # Endpoints de la API
-
-├── Models/         # Entidades de la base de datos
-
-├── DTOs/           # Objetos de transferencia de datos
-
-├── Data/           # DbContext y configuración de EF
-
-└── Migrations/     # Migraciones de la base de datos
 
 ## Endpoints
 
+### Auth
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| GET | /api/Productos | Listar todos los productos |
-| GET | /api/Productos/{id} | Obtener producto por ID |
-| POST | /api/Productos | Crear producto |
-| PUT | /api/Productos/{id} | Actualizar producto |
-| DELETE | /api/Productos/{id} | Eliminar producto |
+| POST | /api/auth/register | Registrar usuario |
+| POST | /api/auth/login | Obtener token JWT |
 
-## Cómo ejecutar
+### Productos (requieren token)
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET | /api/productos | Listar productos |
+| GET | /api/productos/{id} | Obtener producto |
+| POST | /api/productos | Crear producto |
+| PUT | /api/productos/{id} | Actualizar producto |
+| DELETE | /api/productos/{id} | Eliminar producto |
 
-1. Clonar el repositorio
-2. Configurar la cadena de conexión en `appsettings.json`
-3. Ejecutar las migraciones: `dotnet ef database update`
-4. Correr la API: `dotnet run`
-5. Acceder a Swagger: `http://localhost:5135/swagger`
+## Cómo usar
+
+**1. Registrar usuario**
+```json
+POST /api/auth/register
+{
+  "username": "lucas",
+  "password": "tuPassword"
+}
+```
+
+**2. Obtener token**
+```json
+POST /api/auth/login
+{
+  "username": "lucas",
+  "password": "tuPassword"
+}
+// Respuesta: { "token": "eyJ..." }
+```
+
+**3. Usar token en requests**
+```
+Authorization: Bearer eyJ...
+```
+
+## Configuración local
+
+```bash
+git clone https://github.com/lucasaguilera006-ai/inventario-api
+cd inventario-api
+dotnet restore
+dotnet ef database update
+dotnet run
+```
+
+Swagger disponible en `http://localhost:5135/swagger`
