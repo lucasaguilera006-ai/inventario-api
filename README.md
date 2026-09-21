@@ -4,6 +4,9 @@ REST API para gestión de inventario desarrollada con ASP.NET Core (.NET 9), Ent
 
 Incluye un **chatbot con IA (Google Gemini)** que permite consultar el stock en lenguaje natural, usando *function calling* para conectar las respuestas del modelo con los datos reales de la base.
 
+🔗 Ver más proyectos en mi portfolio: [Contra](https://contra.com/lucas_aguilera_6fn7g69r)
+
+
 ## 🚀 Funcionalidades
 
 - CRUD completo de productos, protegido con autenticación JWT.
