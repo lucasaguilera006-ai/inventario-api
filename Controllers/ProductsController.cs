@@ -10,10 +10,10 @@ namespace InventarioAPI.Controllers
     [Authorize]
     [ApiController]
     [Route("api/[controller]")]
-    public class ProductosController : ControllerBase
+    public class ProductsController : ControllerBase
     {
         private readonly AppDbContext _context;
-        public ProductosController(AppDbContext context)
+        public ProductsController(AppDbContext context)
         {
             _context = context;
         }
@@ -31,15 +31,15 @@ namespace InventarioAPI.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult<Producto>> CreateProducto(ProductoDTO dto)
+        public async Task<ActionResult<Producto>> CreateProducto(ProductResponseDTO dto)
         {
             var producto = new Producto
             {
-                Nombre = dto.Nombre,
-                Descripcion = dto.Descripcion,
-                Precio = dto.Precio,
+                Nombre = dto.Name,
+                Descripcion = dto.Description,
+                Precio = dto.Price,
                 Stock = dto.Stock,
-                Categoria = dto.Categoria
+                Categoria = dto.Category
             };
             _context.Productos.Add(producto);
             await _context.SaveChangesAsync();
@@ -47,16 +47,16 @@ namespace InventarioAPI.Controllers
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateProducto(int id, ProductoDTO dto)
+        public async Task<IActionResult> UpdateProducto(int id, ProductResponseDTO dto)
         {
             var producto = await _context.Productos.FindAsync(id);
             if (producto == null) return NotFound();
 
-            producto.Nombre = dto.Nombre;
-            producto.Descripcion = dto.Descripcion;
-            producto.Precio = dto.Precio;
+            producto.Nombre = dto.Name;
+            producto.Descripcion = dto.Description;
+            producto.Precio = dto.Price;
             producto.Stock = dto.Stock;
-            producto.Categoria = dto.Categoria;
+            producto.Categoria = dto.Category;
 
             await _context.SaveChangesAsync();
             return NoContent();
