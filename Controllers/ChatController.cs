@@ -21,69 +21,65 @@ namespace InventarioAPI.Controllers
             _context = context;
             _geminiService = geminiService;
         }
-        [HttpPost]
-        public async Task<ActionResult<ChatResponseDTO>> EnviarMensaje(ChatRequestDTO dto)
-        {
-            if(string.IsNullOrWhiteSpace(dto.Contenido))
-            {
-                return BadRequest("El contenido del mensaje no puede estar vacío.");
-            }
-
-
-            Conversacion conversacion;
-
-            if (dto.ConversacionId == null)
-            {
-                conversacion = new Conversacion
-                {
-                    Titulo = dto.Contenido,
-                    Usuario = User.Identity?.Name ?? "invitado"
-                };
-                _context.Conversaciones.Add(conversacion);
-                await _context.SaveChangesAsync();
-            }
-            else
-            {
-
-                conversacion = await _context.Conversaciones.FindAsync(dto.ConversacionId);
-                if (conversacion == null)
-                {
-                    return NotFound("Conversación no encontrada");
-                }
-
-            }
-
-            Mensaje mensaje = new Mensaje
-            {
-                Rol = "user",
-                Contenido = dto.Contenido,
-                ConversacionId = conversacion.Id
-            };
-            _context.Mensajes.Add(mensaje);
-            await _context.SaveChangesAsync();
-
-            var historial = await _context.Mensajes
-            .Where(m => m.ConversacionId == conversacion.Id)
-            .OrderBy(m => m.FechaEnvio)
-            .ToListAsync();
-
-            var respuesta = await _geminiService.EnviarMensaje(historial);
-            Mensaje mensajeBot = new Mensaje
-            {
-                Rol = "model",
-                Contenido = respuesta,
-                ConversacionId = conversacion.Id
-            };
-            _context.Mensajes.Add(mensajeBot);
-            await _context.SaveChangesAsync();
-
-            var responseDTO = new ChatResponseDTO
-            {
-                ConversacionId = conversacion.Id,
-                Respuesta = respuesta
-            };
-            return Ok(responseDTO);
-
-        }       
+[HttpPost]
+public async Task<ActionResult<ChatResponseDTO>> SendMessage(ChatRequestDTO dto)
+{
+    if (string.IsNullOrWhiteSpace(dto.Content))
+    {
+        return BadRequest("The message content cannot be empty.");
     }
+
+    Conversacion? conversation;
+
+    if (dto.ConversationId == null)
+    {
+        conversation = new Conversacion
+        {
+            Titulo = dto.Content,
+            Usuario = User.Identity?.Name ?? "guest"
+        };
+        _context.Conversaciones.Add(conversation);
+        await _context.SaveChangesAsync();
+    }
+    else
+    {
+        conversation = await _context.Conversaciones.FindAsync(dto.ConversationId);
+        if (conversation == null)
+        {
+            return NotFound("Conversation not found.");
+        }
+    }
+
+    var userMessage = new Mensaje
+    {
+        Rol = "user",
+        Contenido = dto.Content,
+        ConversacionId = conversation.Id
+    };
+    _context.Mensajes.Add(userMessage);
+    await _context.SaveChangesAsync();
+
+    var history = await _context.Mensajes
+        .Where(m => m.ConversacionId == conversation.Id)
+        .OrderBy(m => m.FechaEnvio)
+        .ToListAsync();
+
+    var reply = await _geminiService.EnviarMensaje(history);
+
+    var botMessage = new Mensaje
+    {
+        Rol = "model",
+        Contenido = reply,
+        ConversacionId = conversation.Id
+    };
+    _context.Mensajes.Add(botMessage);
+    await _context.SaveChangesAsync();
+
+    return Ok(new ChatResponseDTO
+    {
+        ConversationId = conversation.Id,
+        Reply = reply
+    });
+}
+}
 }

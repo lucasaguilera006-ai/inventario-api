@@ -2,7 +2,7 @@ namespace InventarioAPI.DTOs
 {
     public class ChatResponseDTO
     {
-        public string Respuesta { get; set;}
-        public int ConversacionId { get; set; }
+        public string Reply { get; set;} = string.Empty;
+        public int ConversationId { get; set; }
     }
 }

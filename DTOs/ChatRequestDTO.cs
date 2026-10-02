@@ -2,7 +2,7 @@ namespace InventarioAPI.DTOs
 {
     public class ChatRequestDTO
     {
-        public string Contenido { get; set; }
-        public int? ConversacionId { get; set; }
+        public string Content { get; set; } = string.Empty;
+        public int? ConversationId { get; set; }
     }
 }
