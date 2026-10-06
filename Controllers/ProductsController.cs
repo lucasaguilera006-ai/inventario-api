@@ -1,9 +1,9 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using InventarioAPI.Data;
-using InventarioAPI.Models;
 using InventarioAPI.DTOs;
-using Microsoft.AspNetCore.Authorization;
+using InventarioAPI.Models;
 
 namespace InventarioAPI.Controllers
 {
@@ -13,27 +13,31 @@ namespace InventarioAPI.Controllers
     public class ProductsController : ControllerBase
     {
         private readonly AppDbContext _context;
+
         public ProductsController(AppDbContext context)
         {
             _context = context;
         }
+
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Producto>>> GetProductos()
+        public async Task<ActionResult<IEnumerable<ProductResponseDTO>>> GetProducts()
         {
-            return await _context.Productos.ToListAsync();
+            var products = await _context.Productos.AsNoTracking().ToListAsync();
+            return Ok(products.Select(ToResponse));
         }
+
         [HttpGet("{id}")]
-        public async Task<ActionResult<Producto>> GetProducto(int id)
+        public async Task<ActionResult<ProductResponseDTO>> GetProduct(int id)
         {
-            var producto = await _context.Productos.FindAsync(id);
-            if (producto == null) return NotFound();
-            return producto;
+            var product = await _context.Productos.FindAsync(id);
+            if (product == null) return NotFound();
+            return ToResponse(product);
         }
 
         [HttpPost]
-        public async Task<ActionResult<Producto>> CreateProducto(ProductResponseDTO dto)
+        public async Task<ActionResult<ProductResponseDTO>> CreateProduct(ProductDTO dto)
         {
-            var producto = new Producto
+            var product = new Producto
             {
                 Nombre = dto.Name,
                 Descripcion = dto.Description,
@@ -41,36 +45,49 @@ namespace InventarioAPI.Controllers
                 Stock = dto.Stock,
                 Categoria = dto.Category
             };
-            _context.Productos.Add(producto);
+            _context.Productos.Add(product);
             await _context.SaveChangesAsync();
-            return CreatedAtAction(nameof(GetProducto), new { id = producto.Id }, producto);
+            return CreatedAtAction(nameof(GetProduct), new { id = product.Id }, ToResponse(product));
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateProducto(int id, ProductResponseDTO dto)
+        public async Task<IActionResult> UpdateProduct(int id, ProductDTO dto)
         {
-            var producto = await _context.Productos.FindAsync(id);
-            if (producto == null) return NotFound();
+            var product = await _context.Productos.FindAsync(id);
+            if (product == null) return NotFound();
 
-            producto.Nombre = dto.Name;
-            producto.Descripcion = dto.Description;
-            producto.Precio = dto.Price;
-            producto.Stock = dto.Stock;
-            producto.Categoria = dto.Category;
+            product.Nombre = dto.Name;
+            product.Descripcion = dto.Description;
+            product.Precio = dto.Price;
+            product.Stock = dto.Stock;
+            product.Categoria = dto.Category;
 
             await _context.SaveChangesAsync();
             return NoContent();
         }
 
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteProducto(int id)
+        public async Task<IActionResult> DeleteProduct(int id)
         {
-            var producto = await _context.Productos.FindAsync(id);
-            if (producto == null) return NotFound();
+            var product = await _context.Productos.FindAsync(id);
+            if (product == null) return NotFound();
 
-            _context.Productos.Remove(producto);
+            _context.Productos.Remove(product);
             await _context.SaveChangesAsync();
             return NoContent();
+        }
+
+        private static ProductResponseDTO ToResponse(Producto p)
+        {
+            return new ProductResponseDTO
+            {
+                Id = p.Id,
+                Name = p.Nombre,
+                Description = p.Descripcion,
+                Price = p.Precio,
+                Stock = p.Stock,
+                Category = p.Categoria,
+            };
         }
     }
 }
