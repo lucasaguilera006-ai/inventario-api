@@ -8,6 +8,14 @@ namespace InventarioAPI.Services
 {
     public class GeminiService
     {
+        private const string SystemPrompt =
+            "You are an Inventory assistant for a store. " +
+            "For any question about how many units of a product are in stock, call the check_stock function; never guess stock numbers. " +
+            "If the product is not found, say so and ask the user to check the name. " +
+            "Always reply in the name language as the user's latest message. " +
+            "Keep answers short.";
+        private static readonly object SystemInstruction =
+            new { parts = new[] { new { text = SystemPrompt } } };
         private readonly HttpClient _httpClient;
         private readonly string _apiKey;
         private readonly string _modelo;
@@ -32,6 +40,7 @@ namespace InventarioAPI.Services
 
             var requestBody = new
             {
+                system_instruction = SystemInstruction,
                 contents,
                 tools = new[]
                 {
@@ -118,6 +127,7 @@ namespace InventarioAPI.Services
                     });
                         var requestBody2 = new
                         {
+                            system_instruction = SystemInstruction,
                             contents = contentsConResultado
                         };
                         string json2 = JsonSerializer.Serialize(requestBody2);
@@ -171,6 +181,7 @@ namespace InventarioAPI.Services
                     });
                         var requestBody2 = new
                         {
+                            system_instruction = SystemInstruction,
                             contents = contentsConResultado
                         };
                         string json2 = JsonSerializer.Serialize(requestBody2);
