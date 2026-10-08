@@ -1,21 +1,21 @@
 # InventarioAPI
 
-REST API para gestión de inventario desarrollada con ASP.NET Core (.NET 9), Entity Framework Core y autenticación JWT.
+REST API for inventory management built with ASP.NET Core (.NET 9), Entity Framework Core and JWT authentication.
 
-Incluye un **chatbot con IA (Google Gemini)** que permite consultar el stock en lenguaje natural, usando *function calling* para conectar las respuestas del modelo con los datos reales de la base.
+It includes an **AI chatbot (Google Gemini)** that answers stock questions in natural language, using *function calling* to connect the model's answers to the real data in the database.
 
-🔗 Ver más proyectos en mi portfolio: [Contra](https://contra.com/lucas_aguilera_6fn7g69r)
+🔗 More projects in my portfolio: [Contra](https://contra.com/lucas_aguilera_6fn7g69r)
 
+## 🚀 Features
 
-## 🚀 Funcionalidades
+- Full product CRUD, protected with JWT authentication.
+- User registration and login.
+- **AI chatbot** (`/api/Chat`): users ask in natural language (e.g. *"How many Mouse units do I have in stock?"*) and the API answers with the real stock figure, queried from the database through Gemini function calling.
+- **Conversation history**: each user can list and read their own conversations. Nobody can access another user's.
 
-- CRUD completo de productos, protegido con autenticación JWT.
-- Registro y login de usuarios.
-- **Chatbot inteligente** (`/api/Chat`): el usuario pregunta en lenguaje natural (ej: *"¿Cuánto stock tengo de Mouse?"*) y la API responde con el dato real de stock, consultado directamente en la base de datos a través de function calling con Gemini.
+## 🛠️ Tech stack
 
-## 🛠️ Tecnologías
-
-- ASP.NET Core .NET 9
+- ASP.NET Core (.NET 9)
 - Entity Framework Core
 - SQL Server
 - JWT Bearer Authentication
@@ -25,93 +25,115 @@ Incluye un **chatbot con IA (Google Gemini)** que permite consultar el stock en 
 ## 📌 Endpoints
 
 ### Auth
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| POST | /api/auth/register | Registrar usuario |
-| POST | /api/auth/login | Obtener token JWT |
+| Method | Route | Description |
+|--------|-------|-------------|
+| POST | /api/auth/register | Register a user |
+| POST | /api/auth/login | Get a JWT token |
 
-### Productos (requieren token)
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| GET | /api/productos | Listar productos |
-| GET | /api/productos/{id} | Obtener producto |
-| POST | /api/productos | Crear producto |
-| PUT | /api/productos/{id} | Actualizar producto |
-| DELETE | /api/productos/{id} | Eliminar producto |
+### Products (token required)
+| Method | Route | Description |
+|--------|-------|-------------|
+| GET | /api/products | List products |
+| GET | /api/products/{id} | Get a product |
+| POST | /api/products | Create a product |
+| PUT | /api/products/{id} | Update a product |
+| DELETE | /api/products/{id} | Delete a product |
 
-### Chat con IA (requiere token)
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| POST | /api/Chat | Consulta el stock en lenguaje natural |
+### AI chat (token required)
+| Method | Route | Description |
+|--------|-------|-------------|
+| POST | /api/Chat | Ask about stock in natural language |
+| GET | /api/Chat | List your conversations |
+| GET | /api/Chat/{id} | Get a conversation with all its messages |
 
-**Ejemplo de request:**
+**Request example:**
 ```json
 POST /api/Chat
 {
-  "contenido": "¿Cuánto stock tengo de Mouse?",
-  "conversacionId": null
+  "content": "How many Mouse units do I have in stock?",
+  "conversationId": null
 }
 ```
 
-**Ejemplo de respuesta:**
+**Response example:**
 ```json
 {
-  "respuesta": "Tienes **12 unidades** en stock del producto **Mouse**.",
-  "conversacionId": 22
+  "reply": "You have **12 units** of **Mouse** in stock.",
+  "conversationId": 22
 }
 ```
 
-**¿Cómo funciona por dentro?**
-1. El mensaje del usuario se envía a Gemini junto con la definición de una función (`ConsultarStock`).
-2. Gemini decide si necesita ese dato y devuelve un `functionCall` con el nombre del producto.
-3. La API ejecuta `ConsultarStock` contra la base de datos real.
-4. El resultado se reenvía a Gemini, que redacta la respuesta final en lenguaje natural.
+Send `conversationId: null` to start a conversation, or reuse the returned id to continue it.
 
-## 📷 Capturas
+**How it works under the hood**
+1. The user's message is sent to Gemini together with the definition of a stock-lookup function.
+2. Gemini decides whether it needs that data and returns a `functionCall` with the product name.
+3. The API runs the lookup against the real database and sends the result back to Gemini.
+4. If Gemini needs another lookup (for example, with a different product name), the cycle repeats for up to 4 rounds.
+5. Gemini writes the final answer in natural language.
 
-![Endpoints en Swagger](screenshot-swagger-endpoints.png)
+> **Note:** the chat depends on the Gemini API. If the model is overloaded, the endpoint returns 502 (service error) or 504 (timeout). Retrying later or changing `Gemini:Model` usually fixes it.
 
-![Código del ProductosController](screenshot-productos-controller.png)
+## 📷 Screenshots
 
-![Chat con IA en funcionamiento](screenshot-chat-gemini.png)
+![Swagger endpoints](screenshot-swagger-endpoints.png)
 
-## ▶️ Cómo correrlo localmente
+![ProductsController code](screenshot-productos-controller.png)
 
-**1. Cloná el repositorio:**
+![AI chat in action](screenshot-chat-gemini.png)
+
+## ▶️ Running locally
+
+**Requirements:** .NET 9 SDK and SQL Server.
+
+**1. Clone the repository:**
 ```bash
 git clone https://github.com/lucasaguilera006-ai/inventario-api
 cd inventario-api
 dotnet restore
+```
+
+**2. Set the SQL Server connection string** in `appsettings.json`.
+
+**3. Configure Gemini** (the key never goes in the repo):
+```bash
+dotnet user-secrets set "Gemini:ApiKey" "YOUR_API_KEY"
+dotnet user-secrets set "Gemini:Model" "gemini-3.8-flash"
+```
+You can get an API key in Google AI Studio.
+
+**4. Create the database and run:**
+```bash
 dotnet ef database update
 dotnet run
 ```
 
-Swagger disponible en `http://localhost:5135/swagger`
+Swagger is available at `http://localhost:5135/swagger`.
 
-**2. Registrar usuario**
+**5. Register a user**
 ```json
 POST /api/auth/register
 {
   "username": "lucas",
-  "password": "tuPassword"
+  "password": "yourPassword"
 }
 ```
 
-**3. Obtener token**
+**6. Get a token**
 ```json
 POST /api/auth/login
 {
   "username": "lucas",
-  "password": "tuPassword"
+  "password": "yourPassword"
 }
-// Respuesta: { "token": "eyJ..." }
+// Response: { "token": "eyJ..." }
 ```
 
-**4. Usar el token en cada request**
+**7. Use the token on every request**
 ```
 Authorization: Bearer eyJ...
 ```
 
-## 📄 Licencia
+## 📄 License
 
-Este proyecto fue desarrollado como muestra de portfolio.
+This project was developed as a portfolio showcase.

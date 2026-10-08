@@ -63,7 +63,7 @@ namespace InventarioAPI.Services
             _httpClient = httpClient;
             _apiKey = configuration["Gemini:ApiKey"]
                 ?? throw new InvalidOperationException("Gemini:ApiKey is not configured. Set it with dotnet user-secrets.");
-            _model = configuration["Gemini:Model"] ?? "gemini-3.6-flash";
+            _model = configuration["Gemini:Model"] ?? "gemini-3.8-flash";
             
             _context = context;
             _logger = logger;
