@@ -22,14 +22,14 @@ namespace InventarioAPI.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<ProductResponseDTO>>> GetProducts()
         {
-            var products = await _context.Productos.AsNoTracking().ToListAsync();
+            var products = await _context.Products.AsNoTracking().ToListAsync();
             return Ok(products.Select(ToResponse));
         }
 
         [HttpGet("{id}")]
         public async Task<ActionResult<ProductResponseDTO>> GetProduct(int id)
         {
-            var product = await _context.Productos.FindAsync(id);
+            var product = await _context.Products.FindAsync(id);
             if (product == null) return NotFound();
             return ToResponse(product);
         }
@@ -37,15 +37,15 @@ namespace InventarioAPI.Controllers
         [HttpPost]
         public async Task<ActionResult<ProductResponseDTO>> CreateProduct(ProductDTO dto)
         {
-            var product = new Producto
+            var product = new Product
             {
-                Nombre = dto.Name,
-                Descripcion = dto.Description,
-                Precio = dto.Price,
+                Name = dto.Name,
+                Description = dto.Description,
+                Price = dto.Price,
                 Stock = dto.Stock,
-                Categoria = dto.Category
+                Category = dto.Category
             };
-            _context.Productos.Add(product);
+            _context.Products.Add(product);
             await _context.SaveChangesAsync();
             return CreatedAtAction(nameof(GetProduct), new { id = product.Id }, ToResponse(product));
         }
@@ -53,14 +53,14 @@ namespace InventarioAPI.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateProduct(int id, ProductDTO dto)
         {
-            var product = await _context.Productos.FindAsync(id);
+            var product = await _context.Products.FindAsync(id);
             if (product == null) return NotFound();
 
-            product.Nombre = dto.Name;
-            product.Descripcion = dto.Description;
-            product.Precio = dto.Price;
+            product.Name = dto.Name;
+            product.Description = dto.Description;
+            product.Price = dto.Price;
             product.Stock = dto.Stock;
-            product.Categoria = dto.Category;
+            product.Category = dto.Category;
 
             await _context.SaveChangesAsync();
             return NoContent();
@@ -69,24 +69,24 @@ namespace InventarioAPI.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteProduct(int id)
         {
-            var product = await _context.Productos.FindAsync(id);
+            var product = await _context.Products.FindAsync(id);
             if (product == null) return NotFound();
 
-            _context.Productos.Remove(product);
+            _context.Products.Remove(product);
             await _context.SaveChangesAsync();
             return NoContent();
         }
 
-        private static ProductResponseDTO ToResponse(Producto p)
+        private static ProductResponseDTO ToResponse(Product p)
         {
             return new ProductResponseDTO
             {
                 Id = p.Id,
-                Name = p.Nombre,
-                Description = p.Descripcion,
-                Price = p.Precio,
+                Name = p.Name,
+                Description = p.Description,
+                Price = p.Price,
                 Stock = p.Stock,
-                Category = p.Categoria,
+                Category = p.Category,
             };
         }
     }
