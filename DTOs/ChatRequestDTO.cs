@@ -1,8 +1,11 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace InventarioAPI.DTOs
 {
     public class ChatRequestDTO
     {
-        public string Contenido { get; set; }
-        public int? ConversacionId { get; set; }
+        [MaxLength(2000)]
+        public string Content { get; set; } = string.Empty;
+        public int? ConversationId { get; set; }
     }
 }

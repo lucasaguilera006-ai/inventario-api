@@ -25,7 +25,7 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> Register([FromBody] UserDto dto)
     {
         if (_context.Users.Any(u => u.Username == dto.Username))
-            return BadRequest("El usuario ya existe.");
+            return BadRequest("Username already exists.");
 
         var user = new User
         {
@@ -35,7 +35,7 @@ public class AuthController : ControllerBase
 
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
-        return Ok("Usuario registrado correctamente.");
+        return Ok("User registered successfully.");
     }
 
     [HttpPost("login")]
@@ -43,13 +43,13 @@ public class AuthController : ControllerBase
     {
         var user = _context.Users.FirstOrDefault(u => u.Username == dto.Username);
         if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
-            return Unauthorized("Credenciales incorrectas.");
+            return Unauthorized("Invalid credentials.");
 
-        var token = GenerarToken(user);
+        var token = GenerateToken(user);
         return Ok(new { token });
     }
 
-    private string GenerarToken(User user)
+    private string GenerateToken(User user)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]!));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
