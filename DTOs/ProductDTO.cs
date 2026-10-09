@@ -13,6 +13,6 @@ namespace InventarioAPI.DTOs
         [Range(0, 1000000)]
         public int Stock { get; set; }
         [MaxLength(50)]
-        public string Category { get; set; } = string.Empty; 
+        public string Category { get; set; } = string.Empty;
     }
 }

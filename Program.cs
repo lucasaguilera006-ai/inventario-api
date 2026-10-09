@@ -32,11 +32,11 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddHttpClient<GeminiService>(client =>
 {
-    client.Timeout = TimeSpan.FromSeconds(30); 
+    client.Timeout = TimeSpan.FromSeconds(120);
 });
 builder.Services.AddSwaggerGen(c =>
 {
-        c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
     {
         Title = "Inventory API",
         Version = "v1",
