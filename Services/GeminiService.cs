@@ -3,6 +3,7 @@ using InventarioAPI.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Text;
 using System.Text.Json;
+using System.Net;
 
 namespace InventarioAPI.Services
 {
@@ -53,8 +54,7 @@ namespace InventarioAPI.Services
 
         private readonly HttpClient _httpClient;
         private readonly string _apiKey;
-        private readonly string _model;
-        
+        private readonly string[] _model;
         private readonly AppDbContext _context;
         private readonly ILogger<GeminiService> _logger;
 
@@ -63,68 +63,72 @@ namespace InventarioAPI.Services
             _httpClient = httpClient;
             _apiKey = configuration["Gemini:ApiKey"]
                 ?? throw new InvalidOperationException("Gemini:ApiKey is not configured. Set it with dotnet user-secrets.");
-            _model = configuration["Gemini:Model"] ?? "gemini-3.8-flash";
-            
+            _model = (configuration["Gemini:Model"] ?? "")
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (_model.Length == 0)
+            {
+                _model = new[] { "gemini-3.8-flash" };
+            }
             _context = context;
             _logger = logger;
-            
-            _logger.LogInformation("Gemini model in use: {Model}", _model);
+
+            _logger.LogInformation("Gemini model in use: {Model}", string.Join(", ", _model));
         }
 
-public async Task<string> SendMessages(List<Message> history)
-{
-    var contents = history
-        .Select(m => (object)new { role = m.Role, parts = new[] { new { text = m.Content } } })
-        .ToList();
-
-    const int MaxRounds = 4;
-
-    for (int round = 0; round < MaxRounds; round++)
-    {
-        using var doc = await CallGeminiAsync(new
+        public async Task<string> SendMessages(List<Message> history)
         {
-            system_instruction = SystemInstruction,
-            contents,
-            tools = Tools
-        });
+            var contents = history
+                .Select(m => (object)new { role = m.Role, parts = new[] { new { text = m.Content } } })
+                .ToList();
 
-        var part = FirstPart(doc);
+            const int MaxRounds = 4;
 
-        if (!part.TryGetProperty("functionCall", out JsonElement functionCall))
-        {
-            if (part.TryGetProperty("text", out JsonElement text))
-                return text.GetString() ?? "";
-
-            _logger.LogWarning("Gemini returned a part without text or functionCall: {Json}",
-                doc.RootElement.GetRawText());
-            throw new InvalidOperationException("Gemini returned an unexpected response.");
-        }
-
-        string functionName = functionCall.GetProperty("name").GetString() ?? "";
-        if (functionName != StockFunctionName)
-            throw new InvalidOperationException($"Gemini requested an unknown function: {functionName}");
-
-        string productName = functionCall.GetProperty("args").GetProperty("productName").GetString() ?? "";
-        int? stock = await GetStock(productName);
-
-        object functionResult = stock is null
-            ? (object)new { error = "Product not found" }
-            : new { stock = stock.Value };
-
-        // Clone: the JsonDocument is disposed at the end of each iteration
-        contents.Add(new { role = "model", parts = new object[] { part.Clone() } });
-        contents.Add(new
-        {
-            role = "user",
-            parts = new object[]
+            for (int round = 0; round < MaxRounds; round++)
             {
-                new { functionResponse = new { name = functionName, response = functionResult } }
-            }
-        });
-    }
+                using var doc = await CallGeminiAsync(new
+                {
+                    system_instruction = SystemInstruction,
+                    contents,
+                    tools = Tools
+                });
 
-    throw new InvalidOperationException($"Gemini kept requesting functions after {MaxRounds} rounds.");
-}
+                var part = FirstPart(doc);
+
+                if (!part.TryGetProperty("functionCall", out JsonElement functionCall))
+                {
+                    if (part.TryGetProperty("text", out JsonElement text))
+                        return text.GetString() ?? "";
+
+                    _logger.LogWarning("Gemini returned a part without text or functionCall: {Json}",
+                        doc.RootElement.GetRawText());
+                    throw new InvalidOperationException("Gemini returned an unexpected response.");
+                }
+
+                string functionName = functionCall.GetProperty("name").GetString() ?? "";
+                if (functionName != StockFunctionName)
+                    throw new InvalidOperationException($"Gemini requested an unknown function: {functionName}");
+
+                string productName = functionCall.GetProperty("args").GetProperty("productName").GetString() ?? "";
+                int? stock = await GetStock(productName);
+
+                object functionResult = stock is null
+                    ? (object)new { error = "Product not found" }
+                    : new { stock = stock.Value };
+
+                // Clone: the JsonDocument is disposed at the end of each iteration
+                contents.Add(new { role = "model", parts = new object[] { part.Clone() } });
+                contents.Add(new
+                {
+                    role = "user",
+                    parts = new object[]
+                    {
+                new { functionResponse = new { name = functionName, response = functionResult } }
+                    }
+                });
+            }
+
+            throw new InvalidOperationException($"Gemini kept requesting functions after {MaxRounds} rounds.");
+        }
 
         private static JsonElement FirstPart(JsonDocument doc) =>
             doc.RootElement
@@ -135,8 +139,37 @@ public async Task<string> SendMessages(List<Message> history)
         // An HttpRequestMessage cannot be resent, so a new one is built on every attempt.
         private async Task<JsonDocument> CallGeminiAsync(object body)
         {
-            string url = $"https://generativelanguage.googleapis.com/v1beta/models/{_model}:generateContent";
             string json = JsonSerializer.Serialize(body);
+            Exception? last = null;
+
+            foreach (var model in _model)
+            {
+                try
+                {
+                    return await CallModelAsync(model, json);
+                }
+                catch (HttpRequestException ex) when (ex.StatusCode is
+                    HttpStatusCode.TooManyRequests or
+                    HttpStatusCode.ServiceUnavailable or
+                    HttpStatusCode.GatewayTimeout or
+                    HttpStatusCode.NotFound)
+                {
+                    last = ex;
+                    _logger.LogWarning("Model {Model} unavailable ({Status}), trying next one if any", model, ex.StatusCode);
+                }
+                catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
+                {
+                    last = ex;
+                    _logger.LogWarning("Model {Model} timed out, trying next one if any", model);
+                }
+            }
+
+            throw last!;
+        }
+
+        private async Task<JsonDocument> CallModelAsync(string model, string json)
+        {
+            string url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent";
 
             for (var attempt = 1; ; attempt++)
             {
@@ -157,15 +190,14 @@ public async Task<string> SendMessages(List<Message> history)
 
                 if (!isTransient || attempt == MaxAttempts)
                 {
-                    // StatusCode is passed along so the controller can tell 503/429 apart from other errors.
                     throw new HttpRequestException(
                         $"Gemini error ({status}): {responseString}", null, response.StatusCode);
                 }
 
                 var delay = TimeSpan.FromSeconds(Math.Pow(2, attempt))
                           + TimeSpan.FromMilliseconds(Random.Shared.Next(0, 500));
-                _logger.LogWarning("Gemini returned {Status}, retry {Attempt}/{Max} in {Delay:F1}s",
-                    status, attempt, MaxAttempts, delay.TotalSeconds);
+                _logger.LogWarning("Gemini ({Model}) returned {Status}, retry {Attempt}/{Max} in {Delay:F1}s",
+                    model, status, attempt, MaxAttempts, delay.TotalSeconds);
                 await Task.Delay(delay);
             }
         }
